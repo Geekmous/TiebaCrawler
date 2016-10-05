@@ -13,8 +13,8 @@ public class Database {
     Post data;
     Connection con;
     Statement stmt;
-    
-    Database() {
+    private static Database database = null;
+    private Database() {
         try {
             Class.forName("org.sqlite.JDBC");
             con = DriverManager.getConnection("jdbc:sqlite:./tieba.db");
@@ -26,19 +26,21 @@ public class Database {
             e.printStackTrace();
         }
     }
-
-    Database(Datable data) {
-        this.addData(data);
-        try {
-            Class.forName("org.sqlite.JDBC");
-            con = DriverManager.getConnection("jdbc:sqlite:tieba.db");
-            stmt = con.createStatement();
-        } catch (ClassNotFoundException | SQLException e) {
-            e.printStackTrace();
+    
+    public static Database getInstance() {
+        if(database == null) {
+            synchronized(Database.class) {
+                if(database == null) {
+                    database = new Database();
+                }
+            }
         }
+        
+        return database;
     }
-    public void addData(Datable data) {
-
+    
+    public void  addData(Datable data) {
+        synchronized (Database.class){
         try {
             String TableName = data.getTableName();
             ResultSet cursor = stmt.executeQuery("select * from tablelist where tables ==\'" + TableName + "\'");
@@ -50,18 +52,27 @@ public class Database {
               stmt.executeUpdate(data.createTable());
               
             }
-            
-
+         
             stmt.executeUpdate(data.insertData());
-
    
         } catch (SQLException e) {
+            System.out.println(data.insertData());
             e.printStackTrace();
+        }
         }
 
     }
     
-    public void close() {
+    public void execute(String sql) {
+        try {
+            stmt.executeUpdate(sql);
+        } catch (SQLException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+    
+    private void close() {
         try {
             stmt.close();
         } catch (SQLException e) {

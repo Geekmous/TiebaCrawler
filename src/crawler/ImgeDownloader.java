@@ -29,7 +29,7 @@ public class ImgeDownloader {
             IMG.mkdir();
         String path = "./img/" + url.replaceAll("/", "");
         URL u;
-        Database database = new Database();
+        Database database = Database.getInstance();
         try {
             u = new URL(url);
             HttpURLConnection con = (HttpURLConnection) u.openConnection();

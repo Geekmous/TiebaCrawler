@@ -85,6 +85,7 @@ public class Post implements Datable{
     public String getFoolr() {
         return floor;
     }
+    
     public String toString() {
         StringBuilder sb = new StringBuilder();
         
@@ -101,6 +102,7 @@ public class Post implements Datable{
         sb.append(bar);
         return sb.toString();
     }
+    
     @Override
     public String getTableName() {
         return "Post";
@@ -120,7 +122,7 @@ public class Post implements Datable{
     }
     
     public String insertData() {
-        String insert = "INSERT INTO Post(UserName, Content,Time, Title, Bar, PostID, Url)Values(\'" +
+        String insert = "REPLACE INTO Post(UserName, Content,Time, Title, Bar, PostID, Url)Values(\'" +
                 this.getAuthor() + "\',\'" +
                 this.getContent() + "\',\'" +
                 getTime() + "\',\'" +

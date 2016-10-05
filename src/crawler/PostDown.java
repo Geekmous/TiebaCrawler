@@ -9,11 +9,14 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class PostDown {
     ResultSet cursor;
     List<String> list = new ArrayList<String>();
     String barTitle;
+    ExecutorService ThreadPool = Executors.newFixedThreadPool(10);
     PostDown() {
         
     }
@@ -81,22 +84,14 @@ public class PostDown {
         
         for(String cursor : list) {
             String url = cursor;
-            PostVisitor visitor = new PostVisitor(url);
-            visitor.start();          
-            Connection con;
-            try {
-                con = DriverManager.getConnection("jdbc:sqlite:./tieba.db");
-                Statement stmt = con.createStatement();
-                Date date = new Date();
-                SimpleDateFormat format = new SimpleDateFormat("YY-MM-DD HH:MM:SS");
-                String d = format.format(date);
-                
-                stmt.execute("UPDATE BAR SET lastupdate = \'" + d + "\' WHERE url = \'" + url +"\'");
-                
-            } catch (SQLException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+                 
+            ThreadPool.execute(new VisitorThread(url));
+     
+            Date date = new Date();
+            SimpleDateFormat format = new SimpleDateFormat("YY-MM-DD HH:MM:SS");
+            String d = format.format(date);
+            Database.getInstance().execute("UPDATE BAR SET lastupdate = \'" + d + "\' WHERE url = \'" + url +"\'");
+
             
         }
         

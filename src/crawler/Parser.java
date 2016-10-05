@@ -1,143 +1,183 @@
 package crawler;
 
 
-import java.io.BufferedWriter;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-
-import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.jsoup.nodes.Document;
-import org.jsoup.Jsoup;
 
-public class Parser {
+public class Parser implements IParser{
     
+	Document doc;
+	String url;
+	IDigest md5;
+	boolean hasNext;
+	public Parser() {  	
+	}
+	
+	@Override
+	public List<Post> parse(Document doc, String url){
+	    this.doc = doc;
+	    this.url = url;
+	    md5 = new DigestMD5();
+	    List<Post> list = new ArrayList();
+	    Elements elementsPost = doc.select("div.j_l_post");
 
-	String UrlContent=null;	
+        for(Element elementPost : elementsPost) {
+            Post post = new Post();
+            
+            post.setAuthor(getAuthor(elementPost));
+            
+            post.setContent(getContent(elementPost));
+            
+            post.setUrl(this.url);  
+            
+            post.setTime(getTime(elementPost));
+            
+            post.setTitle(getTitle());
+            
+            post.setBar(getFromBar());
+            
+            StringBuilder sb = new StringBuilder();
+            sb.append(post.getAuthor());
+            sb.append(post.getContent());
+            sb.append(post.getUrl());
+            sb.append(post.getTime());
+            sb.append(post.getTitle());
+            sb.append(post.getBar());
+            
+            md5.update(sb.toString());
+            
+            post.setPostID(md5.digest());
+            
+            getImage(post.getPostID(), elementPost);
+            
+            list.add(post);
+        }
+        return list;    
+	};
 	
-	
-	public Parser(String UrlContent) {
+	public String getNextUrl(Document doc) {
+	    this.doc = doc;
 	    
-		this.UrlContent = UrlContent;
+	    String nextUrl = null;
+        Elements pageLinks = doc.select("li.pb_list_pager");
+        if(pageLinks.size() > 1 ) {
+            Element Link = pageLinks.get(1);
+            Elements as = Link.getElementsByTag("a");
+            for(Element a : as) {
+                
+                if(a.text().contains("下一页")) {
+                    nextUrl = "http://tieba.baidu.com" + a.attr("href");
+                } // if
+            }// for
+        } // if
+        
+        return nextUrl;
 	}
 	
-	public void setUrl(String UrlContent){
-		this.UrlContent = UrlContent;
-	}
-			
-	private String getAuthor(Element elementPost) {
-	    String authorName = null;
-	    Elements author = elementPost.select("a.p_author_name");
-	    if(author.size() == 1) {
-	        authorName = author.get(0).text();
-	    }
-	    return authorName;	    
-	}
-	
-		
-	
-	private String getContent(Element elementPost) {
-	    String content = null;
-	    Elements contents = elementPost.select("div.j_d_post_content");
-	    if(contents.size() == 1) {
-	        content = contents.text();
-	    }
-	    return content;
-	}
-	
-	private String getTail(Element elementPost) {
-	    String tail = "";
-	    Elements tails = elementPost.select("div.core_reply");
-	    System.out.println("Tail.size() is  " + tails.size());
-	    for(Element node : tails) {
-	        Elements nodes = node.getAllElements();
-	        System.out.println("nodes.size is " + nodes.size() + " --" +nodes.get(0).select("ul").size());	        
-	    }
-	    Elements p_tail = tails.get(0).getElementsByTag("ul");
-	    //System.out.println("p_tail.size() is  " + p_tail.size());
-	    return tail;
-	}
-	
-	
-	public void Processed() throws IOException{
-	 	
-		Document doc=Jsoup.parse(this.UrlContent);	
-		
-		Elements elementsPost = doc.select("div.j_l_post");
-		
-		//System.out.println("the number of Post is :" + elementsPost.size());
-		System.out.println("Parser.java start Parser Content");
-		
-		for(Element elementPost : elementsPost) {
-		    
-		   // System.out.println("data-field::::" + elementPost.attr("data-field"));
-		   // System.out.println("the author of this post is :" + this.getAuthor(elementPost));
-		  // System.out.println("the content of this post is :" + this.getContent(elementPost));
-		  //  System.out.println("the tail of this post is :" + this.getTail(elementPost));
-		    
-		    FileOutputStream outputAuthor = new FileOutputStream("./Author.txt",true);
-		    FileOutputStream outputContent = new FileOutputStream("./Content.txt",true);
-		    OutputStreamWriter authorWriter = new OutputStreamWriter(outputAuthor);
-		    OutputStreamWriter contentWriter = new OutputStreamWriter(outputContent);
-		    BufferedWriter authorBuf = new BufferedWriter(authorWriter);
-		    BufferedWriter contentBuf = new BufferedWriter(contentWriter);
-		    authorBuf.write(this.getAuthor(elementPost) + "\n");
-		    contentBuf.write(this.getContent(elementPost) + "\n");
+	public boolean hasNext(Document doc) {
+	    this.doc = doc;
 
-		    authorBuf.close();
-		    contentBuf.close();
-		}
-		
-		System.out.println("Parser.java Start to NextFloor");
-		Elements pageLinks = doc.select("li.pb_list_pager");
-		if(pageLinks.size() > 1 )
-		{
-		    Element Link = pageLinks.get(1);
-		    Elements as = Link.getElementsByTag("a");
-		        for(Element a : as) {      
-		            if(a.text().contains("下一页")) {	        
-		                String Url = "http://tieba.baidu.com" + a.attr("href");     
-		                HttpVisitor httpVisitor = new HttpVisitor(Url);
-		                System.out.println("a.text() is :" + a.text()  + "and the URL is " + a.attr("href"));
-		                             
-                        Parser parser = new Parser(httpVisitor.connect());
-                        parser.Processed();
-		            }
-		        }
-		    
-		}
-		//this.mysql.Connect();			
-	}
-	
-/*	void ADDtoDB(Mysql mysql){
+        Elements pageLinks = doc.select("li.pb_list_pager");
+        if(pageLinks.size() > 1 ) {
+            Element Link = pageLinks.get(1);
+            Elements as = Link.getElementsByTag("a");
+            for(Element a : as) {
+                //System.out.println(a.text());
+                if(a.text().contains("下一页")) {
+                    //System.out.println("hax");
+                    return true;
+                } // if
+                
+            }// for
+        } // if
 	    
-		for(Post Temp:list){
-		Temp.Author=FilterQuet(Temp.Author);
-		Temp.Content=FilterQuet(Temp.Content);
-		Temp.Bar=FilterQuet(Temp.Bar);
-		Temp.Title=FilterQuet(Temp.Title);
-		String Query="INSERT IGNORE INTO Post(UserName,Content,Time,Floor,Bar,Title,Url,MD5)values('"+Temp.Author+"','"+Temp.Content+"','"+Temp.Time+"','"+Temp.Floor+"','"+Temp.Bar+"','"+Temp.Title+"','"+Temp.Path+"','"+Temp.MD5+"')";
-		//this.mysql.Insert(Query);		
-		}
-		
-	}
-	*/
-	String FilterQuet(String str){
-		str.replaceAll("[\"\']","&queto");
-		return str;
+	    
+	    return false;
 	}
 	
-     public  static void main(String[] args){  
-         HttpVisitor httpVisitor = new HttpVisitor("http://tieba.baidu.com/p/3276058372");
-         Parser mParser=new Parser(httpVisitor.connect()); 			
-         try {
-             mParser.Processed();
-         } catch (IOException e) {
-             // TODO Auto-generated catch block
-             e.printStackTrace();
-         }     
-     }
+	
+    private String getAuthor(Element elementPost) {
+
+        String authorName = "";
+        Elements author = elementPost.select("a.p_author_name");
+        if(author.size() == 1) {
+            authorName = author.get(0).text();
+        }
+        return authorName;      
+    }
+    
+    private String getContent(Element elementPost) {
+        String content = "";
+        Elements contents = elementPost.select("div.j_d_post_content");
+        if(contents.size() == 1) {
+            content = contents.text().replaceAll("\"", "&quote").replaceAll("\'", "");
+        }
+        return content;
+    }
+    
+    private String getTime(Element elementPost) {   
+        String Time = "";
+        Elements tails = elementPost.select("div.core_reply");
+        for(Element node : tails) {          
+            Elements nodes = node.select("span.tail-info");
+            if(nodes.size() > 0) {
+                for(Element time : nodes) {    
+                    Pattern pattern = Pattern.compile("\\d+-\\d+-\\d+.+");
+                    Matcher matcher = pattern.matcher(time.text());
+                    if(matcher.matches()) {
+                        Time = time.text().replaceAll("\"", "&quote");
+                    }
+                }
+            }       
+        }     
+        return Time;
+    }
+    
+    private String getFromBar() {
+        String bar = "";
+        Elements links = doc.select("a.card_title_fname");
+        for(Element frombar : links) {
+            bar = frombar.text();
+        }  
+        return bar;
+    }
+    
+    private String getTitle() {
+        String title = "";
+        Elements ele = doc.getElementsByClass("core_title_txt");
+        for(Element e : ele) {
+            //System.out.println(e.text());
+            title = e.text();
+        } 
+        
+        return title;
+    }
+        
+
+    private void getImage(String PostID, Element Post) {
+        
+        Elements cc = Post.getElementsByTag("cc");
+        
+        for(Element content : cc) {
+            
+            Elements imgs = content.getElementsByTag("img");
+            
+            for(Element img : imgs) {
+                String imgurl = img.attr("src");
+  
+                new ImgeDownloader(PostID, imgurl);
+        
+            }
+            
+        }
+        
+    }
+	
 }
 

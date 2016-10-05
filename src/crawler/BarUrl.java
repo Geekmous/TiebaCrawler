@@ -76,7 +76,7 @@ public class BarUrl {
         Elements titlePost = doc.select("div.threadlist_title");
         Elements elementtitle = doc.select("a.card_title_fname");
         String name = elementtitle.text();
-        Database database = new Database();
+        Database database = Database.getInstance();
         
         for(Element title : titlePost) {
             
@@ -97,7 +97,7 @@ public class BarUrl {
                 database.addData(new barurl(Url, name, "null"));
             else database.addData(new barurl(Url, name, replyDate.toString())); 
         }
-        database.close();
+       
 
       
     }
